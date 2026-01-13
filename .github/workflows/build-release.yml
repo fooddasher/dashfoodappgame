@@ -1,0 +1,205 @@
+# ============================================================================
+# Food Dash - Android Release Build Workflow
+# ============================================================================
+# This workflow builds signed APK and AAB on every push to main/master.
+# 
+# REQUIRED GITHUB SECRETS:
+#   - FOODDASH_KEYSTORE_BASE64: Base64-encoded .jks keystore file
+#   - FOODDASH_KEYSTORE_PASSWORD: Password for the keystore
+#   - FOODDASH_KEY_ALIAS: Alias name for the signing key
+#   - FOODDASH_KEY_PASSWORD: Password for the key alias
+#
+# SECURITY NOTES:
+#   - Keystore is decoded at runtime and deleted after build
+#   - No secrets are printed to logs
+#   - All sensitive operations use GitHub's secret masking
+# ============================================================================
+
+name: Build Android Release
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:  # Allow manual trigger
+
+# Prevent concurrent builds on the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.38.5'  # Latest stable Flutter version
+  JAVA_VERSION: '17'
+
+jobs:
+  build-android:
+    name: Build Signed APK & AAB
+    runs-on: ubuntu-latest
+    
+    steps:
+      # ========================================
+      # 1. CHECKOUT CODE
+      # ========================================
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ========================================
+      # 2. SETUP JAVA
+      # ========================================
+      - name: Set up JDK ${{ env.JAVA_VERSION }}
+        uses: actions/setup-java@v4
+        with:
+          java-version: ${{ env.JAVA_VERSION }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      # ========================================
+      # 3. SETUP FLUTTER
+      # ========================================
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter installation
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      # ========================================
+      # 4. GET FLUTTER DEPENDENCIES
+      # ========================================
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      # ========================================
+      # 5. DECODE KEYSTORE (Secure)
+      # ========================================
+      - name: Decode Keystore
+        env:
+          FOODDASH_KEYSTORE_BASE64: ${{ secrets.FOODDASH_KEYSTORE_BASE64 }}
+        run: |
+          # Decode the base64 keystore to a file
+          echo "$FOODDASH_KEYSTORE_BASE64" | base64 --decode > android/app/fooddash-release.jks
+          
+          # Verify the file was created (without exposing content)
+          if [ -f android/app/fooddash-release.jks ]; then
+            echo "✅ Keystore file created successfully"
+          else
+            echo "❌ Failed to create keystore file"
+            exit 1
+          fi
+
+      # ========================================
+      # 6. CREATE KEY.PROPERTIES (Secure)
+      # ========================================
+      - name: Create key.properties
+        env:
+          FOODDASH_KEYSTORE_PASSWORD: ${{ secrets.FOODDASH_KEYSTORE_PASSWORD }}
+          FOODDASH_KEY_ALIAS: ${{ secrets.FOODDASH_KEY_ALIAS }}
+          FOODDASH_KEY_PASSWORD: ${{ secrets.FOODDASH_KEY_PASSWORD }}
+        run: |
+          # Create key.properties file for Gradle signing
+          cat > android/key.properties << EOF
+          storePassword=$FOODDASH_KEYSTORE_PASSWORD
+          keyPassword=$FOODDASH_KEY_PASSWORD
+          keyAlias=$FOODDASH_KEY_ALIAS
+          storeFile=fooddash-release.jks
+          EOF
+          
+          echo "✅ key.properties created successfully"
+
+      # ========================================
+      # 7. BUILD SIGNED APK (Release)
+      # ========================================
+      - name: Build Release APK
+        run: |
+          flutter build apk --release --no-tree-shake-icons
+          echo "✅ APK build completed"
+
+      # ========================================
+      # 8. BUILD SIGNED AAB (Release)
+      # ========================================
+      - name: Build Release AAB
+        run: |
+          flutter build appbundle --release --no-tree-shake-icons
+          echo "✅ AAB build completed"
+
+      # ========================================
+      # 9. CLEANUP SENSITIVE FILES
+      # ========================================
+      - name: Cleanup sensitive files
+        if: always()
+        run: |
+          # Securely delete keystore and key.properties
+          rm -f android/app/fooddash-release.jks
+          rm -f android/key.properties
+          echo "✅ Sensitive files cleaned up"
+
+      # ========================================
+      # 10. VERIFY BUILD OUTPUTS
+      # ========================================
+      - name: Verify build outputs
+        run: |
+          echo "📦 Checking build outputs..."
+          
+          APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
+          AAB_PATH="build/app/outputs/bundle/release/app-release.aab"
+          
+          if [ -f "$APK_PATH" ]; then
+            APK_SIZE=$(du -h "$APK_PATH" | cut -f1)
+            echo "✅ APK found: $APK_SIZE"
+          else
+            echo "❌ APK not found!"
+            exit 1
+          fi
+          
+          if [ -f "$AAB_PATH" ]; then
+            AAB_SIZE=$(du -h "$AAB_PATH" | cut -f1)
+            echo "✅ AAB found: $AAB_SIZE"
+          else
+            echo "❌ AAB not found!"
+            exit 1
+          fi
+
+      # ========================================
+      # 11. UPLOAD APK ARTIFACT
+      # ========================================
+      - name: Upload APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: food-dash-apk-${{ github.sha }}
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      # ========================================
+      # 12. UPLOAD AAB ARTIFACT
+      # ========================================
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: food-dash-aab-${{ github.sha }}
+          path: build/app/outputs/bundle/release/app-release.aab
+          retention-days: 30
+          if-no-files-found: error
+
+      # ========================================
+      # 13. BUILD SUMMARY
+      # ========================================
+      - name: Build Summary
+        run: |
+          echo "## 🎉 Build Completed Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📦 Artifacts" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK**: food-dash-apk-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **AAB**: food-dash-aab-${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📝 Details" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: \`${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Flutter: \`${{ env.FLUTTER_VERSION }}\`" >> $GITHUB_STEP_SUMMARY

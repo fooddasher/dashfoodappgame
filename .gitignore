@@ -1,0 +1,150 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code related
+.vscode/
+
+# Cursor IDE related
+.cursor/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+/build/
+build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Android specific
+**/android/local.properties
+**/android/key.properties
+**/android/*.keystore
+**/android/*.jks
+**/android/gradlew
+**/android/gradlew.bat
+**/android/.gradle/
+**/android/captures/
+**/android/generated/
+**/android/app/build/
+**/android/build/
+
+# iOS specific
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/profile
+**/ios/xcuserdata/
+**/ios/DerivedData/
+**/ios/Podfile.lock
+
+# Windows specific
+**/windows/flutter/ephemeral/
+**/windows/x64/
+**/windows/x86/
+**/windows/*.user
+**/windows/*.suo
+
+# Linux specific
+**/linux/flutter/ephemeral/
+
+# MacOS specific
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+**/macos/xcuserdata/
+
+# Secrets and Keys (General)
+key.properties
+local.properties
+*.keystore
+*.jks
+*.p12
+*.pem
+*.der
+*.crt
+*.cer
+secrets.dart
+secrets.json
+.env
+.env.*
+google-services.json
+GoogleService-Info.plist
+
+# Keystore Generation Output (NEVER commit these!)
+fooddash-release.jks
+fooddash-keystore-base64.txt
+*-release.jks
+*-keystore-base64.txt
+upload-keystore.jks
+
+# Firebase / Google Cloud
+firebase_options.dart
+**/firebase_app_id_file.json
+
+# documentation
+documentation/
+
+# Crash logs and debugging
+*.dmp
+*.stackdump
+crash_log*.txt
+hs_err_pid*.log
+
+# Generated output files (APK, AAB, IPA)
+*.apk
+*.aab
+*.ipa
+*.app.dSYM.zip
+
+# FVM (Flutter Version Management)
+.fvm/
+.fvmrc
+
+# Melos
+.melos/
+
+# User-specific test configs
+test_driver/secrets.dart
+
+# Gradle
+.gradle/
+gradle-wrapper.jar
+
+# Visual Studio
+*.vcxproj.user
+*.sln.docstates
+*.userosscache
+*.[Cc]ache
